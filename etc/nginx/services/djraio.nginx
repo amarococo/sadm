@@ -1,0 +1,87 @@
+proxy_cache_path /var/prologin/djraio/nginxcache
+    levels=1:2            # Shard files into prefix directories.
+    keys_zone=djraio:30m  # Keep 30MB worth of key space, that's plenty.
+    max_size=10g          # Max cache size; it's audio, make it large.
+    inactive=30d          # Duration after which content is stale; song blobs
+                          # shouldn't ever change, neither should search results
+                          # on such a small time frame.
+    use_temp_path=off;
+
+upstream resolver_backend {
+    # Server resolving search results, cover art images and song audio from
+    # the various resolvers (Youtube, Spotify).
+    # Responses are cached using the cache conf above.
+    server unix:/var/prologin/djraio/resolver.socket;
+}
+
+upstream frontend_backend {
+    # Server for the frontend API (JSON/Websockets).
+    server unix:/var/prologin/djraio/frontend.socket;
+}
+
+server {
+    listen 80;
+    server_name radio;
+
+    include sso/handler;
+
+    location /status {
+        stub_status on;
+        access_log off;
+    }
+
+    location /resolve {
+        proxy_pass http://resolver_backend;
+        # Strip the /resolve prefix.
+        rewrite /resolve/(.*) /$1 break;
+        # Cache responses.
+        proxy_cache djraio;
+        proxy_cache_key $uri$is_args$args;
+        # Add some debug header.
+        add_header X-Proxy-Cache $upstream_cache_status;
+        add_header X-Proxy-Key $uri$is_args$args;
+        # Don't allow concurrent requests on the same content (queue-like).
+        proxy_cache_lock on;
+        # We really don't want anything to bypass the cache.
+        proxy_cache_lock_age 10m;
+        proxy_cache_lock_timeout 1h;
+        # That should be more than enough for < 8 minute songs.
+        proxy_read_timeout 5m;
+        # OK responses can be cached for super long.
+        proxy_cache_valid 200 30d;
+        # Error responses are cached for just a few seconds.
+        proxy_cache_valid any 10s;
+        # Serve stale content if the backend is down (ie. does not reply
+        # within 5s, which is not the same as the *read* timeout, that can
+        # take multiple minutes for Spotify).
+        proxy_cache_use_stale timeout;
+        proxy_connect_timeout 5s;
+    }
+
+    location /ws {
+        # Websockets stuff.
+        include sso/protect;
+        proxy_pass http://frontend_backend;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+    }
+
+    location / {
+        include sso/protect;
+        # Try frontend static files first, fallback to the frontend API.
+        root /var/prologin/venv_djraio/frontend;
+        try_files $uri $uri/ @api;
+    }
+
+    location @api {
+        internal;
+        include sso/protect;
+        # Add CORS shit
+        add_header Access-Control-Allow-Origin "$http_origin";
+        add_header Access-Control-Allow-Credentials true;
+        proxy_set_header X-Forwarded-Host $http_host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        add_header X-Upstream $upstream_addr;
+        proxy_pass http://frontend_backend;
+    }
+}

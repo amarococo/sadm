@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 # Copyright (c) 2013 Pierre Bourdon <pierre.bourdon@prologin.org>
 # Copyright (c) 2013 Association Prologin <info@prologin.org>
 #
@@ -14,6 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Prologin-SADM.  If not, see <http://www.gnu.org/licenses/>.
+
 """Installation script for the components of Prologin SADM.
 
 Handles upgrades as well, including configuration upgrades (creates a .new file
@@ -114,6 +114,11 @@ USERS = {
         'uid': 20160,
         'groups': ('cluster', 'cluster_public', 'isolate')
     },
+    # isolate group has 20170
+    'djraio': {
+        'uid': 20180,
+        'groups': ('djraio', 'udbsync_public')
+    },
 }
 
 # Same with groups. *_public groups are used for services that need to access
@@ -144,6 +149,7 @@ GROUPS = {
     'cluster': 20160,
     'cluster_public': 20161,
     'isolate': 20170,
+    'djraio': 20180,
 }
 
 # Location of the SADM master secret
@@ -365,7 +371,7 @@ def execute_sql(name, database=None, verbose=True):
 
 
 def install_base():
-    '''Config every single machine should have'''
+    """Config every single machine should have"""
     requires('sshdcfg')
 
 
@@ -972,12 +978,35 @@ def install_prometheus():
     install_systemd_unit('prometheus')
 
 
+def install_djraio():
+    requires('postgresql')
+    requires('nginxcfg')
+
+    install_cfg('prologin/djraio-frontend.env', '/etc/prologin/',
+                owner='djraio:djraio')
+    install_cfg('prologin/djraio-resolver.env', '/etc/prologin/',
+                owner='djraio:djraio')
+
+    install_nginx_service('djraio')
+
+    mkdir('/var/prologin/djraio', mode=0o771, owner='djraio:djraio')
+    mkdir('/var/prologin/djraio_nginxcache', mode=0o770, owner='http:http')
+
+    if not check_database_exists('djraio'):
+        execute_sql('djraio')
+
+    install_systemd_unit('djraio-resolver')
+    install_systemd_unit('djraio-frontend')
+    install_systemd_unit('udbsync_djraio')
+
+
 COMPONENTS = [
     'base',
     'bindcfg',
     'concours',
     'conntrack',
     'dhcpdcfg',
+    'djraio',
     'docs',
     'firewall',
     'generate_secret',

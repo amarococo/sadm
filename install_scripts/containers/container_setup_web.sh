@@ -5,9 +5,11 @@ CONTAINER_NAME=myweb
 
 CONTAINER_HOSTNAME=web
 CONTAINER_MAIN_IP=192.168.1.100
-MDB_ALIASES=db,concours,wiki,bugs,redmine,docs,home,paste,map,masternode
+MDB_ALIASES=db,concours,wiki,bugs,redmine,docs,home,paste,map,masternode,radio
 
 GW_CONTAINER_NAME=mygw
+
+DJRAIO_ROOT_DIR=/home/alex/dev/prologin/dj/async
 
 source ./container_setup_common.sh
 
@@ -213,6 +215,46 @@ function test_redmine {
   test_service_is_enabled_active redmine udbsync_redmine
 }
 
+function stage_install_djraio {
+  echo_status "Clone djraio to the container"
+
+  rm -rf $CONTAINER_ROOT/root/djraio
+  git clone git@bitbucket.org:Zopieux/djraio.git $CONTAINER_ROOT/root/djraio
+  # cp -r $DJRAIO_ROOT_DIR/{setup.py,frontend,djraio,for-prologin}
+
+  container_snapshot $FUNCNAME
+}
+
+function stage_setup_djraio {
+  echo_status "Setup djraio"
+
+  container_run /usr/bin/virtualenv3 /var/prologin/venv_djraio
+  container_run /var/prologin/venv_djraio/bin/pip install -r /root/sadm/requirements.txt
+  container_run /var/prologin/venv_djraio/bin/pip install /root/sadm/python-lib
+  container_run /var/prologin/venv_djraio/bin/pip install /root/djraio
+  container_run /var/prologin/venv_djraio/bin/pip install /root/djraio/for-prologin/djraio_prologin
+
+  container_run /var/prologin/venv/bin/python /root/sadm/install.py djraio
+
+  container_run /usr/bin/systemctl enable --now djraio-resolver
+  container_run /usr/bin/systemctl enable --now djraio-frontend
+  sleep 3
+  container_run /usr/bin/systemctl enable --now udbsync_djraio
+
+  container_run /usr/bin/systemctl reload nginx
+
+  # Give it some time to start
+  sleep 3
+
+  container_snapshot $FUNCNAME
+}
+
+function test_djraio {
+  echo "[>] Test djraio..."
+
+  test_service_is_enabled_active djraio-resolver djraio-frontend udbsync_djraio
+  test_url http://radio/
+}
 
 if ! machinectl >/dev/null status $GW_CONTAINER_NAME; then
   echo >&2 "Please start the GW container"
@@ -268,5 +310,9 @@ run test_masternode
 # Skipped as not ready yet
 skip stage_setup_redmine
 skip test_redmine
+
+run stage_install_djraio
+run stage_setup_djraio
+run test_djraio
 
 echo_status "$CONTAINER_HOSTNAME setup: success!"

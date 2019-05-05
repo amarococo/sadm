@@ -1,0 +1,12 @@
+[Unit]
+Description=mpv in daemon mode
+
+[Service]
+ExecStart=/usr/bin/mpv --input-ipc-server=/tmp/djraio-mpv.sock \
+    --idle --input-terminal=no --no-ytdl --no-audio-display \
+    --force-seekable=yes
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=default.target

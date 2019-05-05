@@ -1,0 +1,12 @@
+[Unit]
+Description=mpv TCP bridge listening in port 20180
+Wants=djraio-mpv.service
+
+[Service]
+ExecStart=/usr/bin/socat \
+    TCP-LISTEN:20180,reuseaddr,pf=ip4,fork UNIX-CONNECT:/tmp/djraio-mpv.sock
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=default.target

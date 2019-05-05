@@ -1,0 +1,16 @@
+[Unit]
+Description=djraio (collaborative jukebox): music resolver
+After=network-online.target
+
+[Service]
+Type=simple
+User=djraio
+WorkingDirectory=/var/prologin/djraio
+EnvironmentFile=/etc/prologin/djraio-resolver.env
+ExecStart=/var/prologin/venv_djraio/bin/python -m djraio.server.resolver \
+  --logging=INFO --unix=/var/prologin/djraio/resolver.socket
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,15 @@
+[Unit]
+Description=UDBSync daemon for djraio (collaborative jukebox)
+After=network-online.target
+
+[Service]
+Type=simple
+User=djraio
+WorkingDirectory=/var/prologin/djraio
+EnvironmentFile=/etc/prologin/djraio-frontend.env
+ExecStart=/var/prologin/venv_djraio/bin/python -m djraio_prologin.udbsync
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

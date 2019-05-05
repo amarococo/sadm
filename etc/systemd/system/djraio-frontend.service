@@ -1,0 +1,22 @@
+[Unit]
+Description=djraio (collaborative jukebox): frontend
+After=network-online.target
+Wants=djraio-resolver.service
+Wants=udbsync_djraio.service
+
+[Service]
+Type=simple
+User=djraio
+WorkingDirectory=/var/prologin/djraio
+EnvironmentFile=/etc/prologin/djraio-frontend.env
+ExecStart=/var/prologin/venv_djraio/bin/python -m djraio.server.frontend \
+  --logging=INFO --unix=/var/prologin/djraio/frontend.socket \
+  --root=http://radio/ \
+  --auth=djraio_prologin.ProloginAuthProvider \
+  --resolver=http://radio/resolve \
+  --mpv=mpv:20180
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
