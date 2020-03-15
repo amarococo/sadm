@@ -119,6 +119,10 @@ USERS = {
         'uid': 20180,
         'groups': ('ansible', 'mdb'),
     },
+    'sddm_remote': {
+        'uid': 20190,
+        'groups': ('sddm_remote',)
+    },
 }
 
 # Same with groups. *_public groups are used for services that need to access
@@ -150,6 +154,7 @@ GROUPS = {
     'cluster_public': 20161,
     'isolate': 20170,
     'ansible': 20180,
+    'sddm_remote': 20190,
 }
 
 # Location of the SADM master secret
@@ -901,6 +906,15 @@ def install_sddmcfg():
         file_mode=0o644)
 
 
+def install_sddm_remotectl():
+    install_systemd_unit('sddm-remote')
+    install_cfg(
+        'etc/sddm_remote.env',
+        '/etc/prologin',
+        owner='root:sddm_remote',
+        mode=0o640)
+
+
 def install_hfsdb():
     requires('postgresql')
     if not check_database_exists('hfs'):
@@ -1042,6 +1056,7 @@ COMPONENTS = [
     'rfs_nfs_sadm',
     'sadm_secret',
     'sddmcfg',
+    'sddm_remotectl',
     'sshdcfg',
     'systemd_networkd_gw',
     'systemd_networkd_rhfs',

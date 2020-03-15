@@ -2,10 +2,12 @@
 Description=WebSocket server that SDDM connects to for remote control
 
 [Service]
-ExecStart=/root/sddm_remote.py
+User=sddm_remote
+EnvironmentFile=/etc/prologin/sddm_remote.env
+ExecStart=/opt/prologin/venv/bin/python -m prologin.utils.sddm_remote \
+    --host 0.0.0.0 --port 20190
 Restart=on-failure
 RestartSec=2
 
 [Install]
 WantedBy=multi-users.target
-
