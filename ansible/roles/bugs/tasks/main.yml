@@ -1,0 +1,68 @@
+- name: Install Bugs systemd service
+  template:
+    src: 'systemd/bugs.service'
+    dest: '/etc/systemd/system/'
+  notify: restart bugs
+
+- name: Install Bugs nginx service
+  template:
+    src: 'nginx/bugs.nginx'
+    dest: '/etc/nginx/services/bugs.nginx'
+  notify: reload nginx
+
+- name: Install client configurations
+  template:
+    src: 'prologin/{{ item.name }}'
+    dest: '/etc/prologin/{{ item.name }}'
+    mode: '{{ item.mode }}'
+    group: bugs
+  loop:
+    - {name: bugs.yml, mode: '640'}
+    - {name: bugs-udbsync.yml, mode: '640'}
+  loop_control:
+    label: '{{ item.name }}'
+  notify: restart bugs
+
+- name: Create Django app directory
+  file:
+    path: /var/prologin/bugs
+    state: directory
+    owner: bugs
+    group: bugs
+    mode: 0700
+
+- name: Install Bugs manage.py
+  template:
+    src: 'django/manage.py'
+    dest: '/var/prologin/bugs/manage.py'
+    owner: bugs
+    group: bugs
+    mode: 0750
+
+- name: Create the PostgreSQL Bugs user
+  postgresql_user:
+    name: bugs
+    password: '{{ bugs_db_password }}'
+    encrypted: yes
+  no_log: true
+  become: true
+  become_user: postgres
+
+- name: Create the PostgreSQL Bugs database
+  postgresql_db:
+    name: bugs
+    owner: bugs
+  become: true
+  become_user: postgres
+
+- name: Migrate Bugs database
+  django_manage:
+    command: migrate
+    app_path: '/var/prologin/bugs'
+    virtualenv: '/opt/prologin/venv'
+
+- name: Enable Bugs
+  systemd:
+    name: bugs
+    enabled: True
+    state: started

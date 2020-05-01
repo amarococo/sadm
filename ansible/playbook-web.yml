@@ -9,6 +9,7 @@
       - homepage
       - paste
       - wiki
+      - bugs
     network_config:
       - 10-web.link
       - 10-web.network
@@ -78,6 +79,10 @@
     - import_role:
         name: wiki
       tags: wiki
+
+    - import_role:
+        name: bugs
+      tags: bugs
 
     - import_role:
         name: udbsync_django

@@ -1,0 +1,12 @@
+[Unit]
+Description=Bugs
+After=network-online.target
+
+[Service]
+Type=simple
+User=bugs
+WorkingDirectory=/var/prologin/bugs
+ExecStart=/opt/prologin/venv/bin/gunicorn -b 127.0.0.1:20300 prologin.bugs.wsgi
+
+[Install]
+WantedBy=multi-user.target

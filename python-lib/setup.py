@@ -28,6 +28,11 @@ setup(
     packages=find_packages(),
     scripts=['prologin/rpc/prolorpc', 'prologin/xhack.py'],
     package_data={
+        'prologin.bugs': [
+            'bugs/static/**/*.*',
+            'bugs/templates/*',
+            'bugs/templates/**/*',
+        ],
         'prologin.concours': [
             'stechec/static/**/*.*',
             'stechec/templates/**/*',

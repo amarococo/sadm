@@ -1,0 +1,5 @@
+- name: restart bugs
+  systemd:
+    name: bugs
+    state: restarted
+    daemon_reload: True
