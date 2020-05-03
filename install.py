@@ -751,24 +751,6 @@ def install_presenced():
     )
     install_systemd_unit('presenced')
 
-    cfg = '/etc/pam.d/system-login'
-    cfg_line = (
-        'session requisite pam_exec.so'
-        ' /var/prologin/presenced/pam_presenced.py'
-    )
-
-    with open(cfg, 'r') as f:
-        cfg_contents = f.read().split('\n')
-        to_append = cfg_line not in cfg_contents
-
-    if to_append:
-        cfg_contents = '\n'.join(cfg_contents)
-        cfg_new = re.sub(
-            r'(.*pam_systemd.*)', cfg_line + r'\n\1', cfg_contents
-        )
-        with open(cfg, 'w') as f:
-            print(cfg_new, file=f)
-
 
 def install_presencesync():
     requires('libprologin')
@@ -822,6 +804,20 @@ def install_presencesync_firewall():
 
     install_cfg_profile('presencesync_firewall', group='root')
     install_systemd_unit('presencesync_firewall')
+
+
+def install_prologind():
+    requires('libprologin')
+
+    install_systemd_unit('prologind', kind='socket')
+    install_systemd_unit('prologind')
+
+
+def install_lightdm():
+    requires('presenced')
+
+    copy('etc/lightdm/lightdm.conf', '/etc/lightdm/lightdm.conf',
+         mode=0o644, owner='root:root')
 
 
 def install_nfsroot_export_dirs():
@@ -930,19 +926,6 @@ def _install_rfs_nfs_packages(packages):
         '/usr/bin/systemd-nspawn -q -D {} /usr/bin/pacman -Sy --needed --noconfirm {}'.format(
             ROOTFS_STAGING, packages
         )
-    )
-
-
-def install_sddmcfg():
-    copy('etc/sddm/sddm.conf', '/etc/sddm.conf', mode=0o644)
-    copy(
-        'etc/sddm/scripts/Xsetup', '/usr/share/sddm/scripts/Xsetup', mode=0o755
-    )
-    copytree(
-        'etc/sddm/themes/prologin',
-        '/usr/share/sddm/themes/prologin',
-        dir_mode=0o755,
-        file_mode=0o644,
     )
 
 
@@ -1089,6 +1072,7 @@ COMPONENTS = [
     'presencesync_sso',
     'presencesync_firewall',
     'presencesync_usermap',
+    'prologind',
     'prometheus',
     'pull_secret',
     'redmine',
@@ -1099,7 +1083,7 @@ COMPONENTS = [
     'rfs_nfs_packages_extra',
     'rfs_nfs_sadm',
     'sadm_secret',
-    'sddmcfg',
+    'lightdm',
     'sshdcfg',
     'systemd_networkd_gw',
     'systemd_networkd_rhfs',

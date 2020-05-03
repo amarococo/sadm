@@ -1,0 +1,13 @@
+[Unit]
+Description=Socket activation for prologind (ProLogin greeter daemon)
+DefaultDependencies=no
+
+[Socket]
+ListenStream=/run/prologind
+SocketUser=root
+SocketGroup=lightdm
+SocketMode=0660
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target

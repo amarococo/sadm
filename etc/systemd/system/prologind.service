@@ -1,0 +1,8 @@
+[Unit]
+Description=ProLogin daemon (HFS moves & NBD mounts)
+Requires=prologind.socket
+After=prologind.socket
+Conflicts=shutdown.target
+
+[Service]
+ExecStart=/opt/prologin/venv/bin/python -m prologin.presenced.prologind

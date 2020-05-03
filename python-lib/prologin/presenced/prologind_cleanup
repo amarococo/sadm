@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# Send the cleanup command to prologind unix socket. Exit on receiving a line
+# (non-zero if not "success") or after a timeout (10s). Depends on socat(1).
+
+declare -r socket=/run/prologind
+declare -r timeout=10
+
+echo -n "cleanup $USER" | socat -t $timeout - "UNIX-CLIENT:$socket",shut-none | while read -r reply
+do
+    exit $(test "$reply" = "success")
+done
