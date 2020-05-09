@@ -12,6 +12,7 @@
           - grafana
           - kibana
           - prometheus
+          - sentry
         mtype: service
         room: pasteur
       delegate_to: gw
@@ -48,3 +49,7 @@
     - import_role:
         name: elk
       tags: elk
+
+    - import_role:
+        name: sentry
+      tags: sentry

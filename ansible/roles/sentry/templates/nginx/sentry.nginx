@@ -1,0 +1,11 @@
+server {
+    listen 80;
+    server_name sentry;
+
+    access_log logs/sentry.access.log main;
+
+    location / {
+        proxy_pass http://localhost:{{ sentry_http_port }};
+        include include/proxy_params;
+    }
+}

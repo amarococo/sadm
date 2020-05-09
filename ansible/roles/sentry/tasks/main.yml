@@ -1,0 +1,98 @@
+- name: Install sentry requirements
+  pacman:
+    name:
+      - docker
+      - python-docker
+
+- name: Enable docker
+  systemd:
+    name: docker.service
+    enabled: true
+    state: started
+
+- name: Create the sentry-redis container
+  docker_container:
+    name: sentry-redis
+    image: redis
+    restart_policy: always
+
+- name: Create the sentry-postgres container
+  docker_container:
+    name: sentry-postgres
+    image: postgres
+    restart_policy: always
+    env:
+      POSTGRES_USER: sentry
+      POSTGRES_PASSWORD: '{{ sentry_db_password }}'
+
+- name: Upgrade the sentry database
+  shell: >
+    docker run --rm
+    -e SENTRY_SECRET_KEY={{ sentry_secret }}
+    --link sentry-postgres:postgres
+    --link sentry-redis:redis
+    sentry upgrade --noinput
+
+- name: Create the sentry container
+  docker_container:
+    name: sentry
+    image: sentry
+    restart_policy: always
+    links:
+      - sentry-postgres:postgres
+      - sentry-redis:redis
+    env:
+      SENTRY_SECRET_KEY: '{{ sentry_secret }}'
+    published_ports:
+      - '{{ sentry_http_port }}:9000'
+
+- name: Create the sentry-cron container
+  docker_container:
+    name: sentry-cron
+    image: sentry
+    command: run cron
+    restart_policy: always
+    links:
+      - sentry-postgres:postgres
+      - sentry-redis:redis
+    env:
+      SENTRY_SECRET_KEY: '{{ sentry_secret }}'
+
+- name: Create the sentry-worker container
+  docker_container:
+    name: sentry-worker
+    image: sentry
+    command: run worker
+    restart_policy: always
+    links:
+      - sentry-postgres:postgres
+      - sentry-redis:redis
+    env:
+      SENTRY_SECRET_KEY: '{{ sentry_secret }}'
+
+- name: Create the admin user
+  shell: >
+    docker run --rm
+    -e SENTRY_SECRET_KEY={{ sentry_secret }}
+    --link sentry-postgres:postgres
+    --link sentry-redis:redis
+    sentry
+    createuser
+    --email sadm@prologin.org
+    --password {{ sentry_admin_password }}
+    --superuser
+    --no-input
+    # --force-update
+  # TODO: remove once this is in latest:
+  # https://github.com/getsentry/sentry/commit/4c3a402c709d0844ed6a416d9a4a80505e76eb16
+  # Use --force-update instead
+  register: admin_create
+  failed_when:
+    - "admin_create.rc != 0"
+    - "'(sadm@prologin.org) already exists.' not in admin_create.stderr"
+
+- name: Install Sentry nginx service
+  template:
+    src: 'nginx/sentry.nginx'
+    dest: '/etc/nginx/services/'
+  notify: reload nginx

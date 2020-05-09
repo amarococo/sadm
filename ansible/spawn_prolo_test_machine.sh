@@ -28,6 +28,19 @@ Zone=prolo
 [Files]
 # Allows cp-ing from container to container
 PrivateUsersChown=false
+
+# Allow use of cgroupv1 from inside the container
+Bind=/sys/fs/cgroup
+
+[Exec]
+# Required for docker
+Capability=all
+SystemCallFilter=add_key keyctl
+NSPAWN
+
+mkdir -p /etc/systemd/system/systemd-nspawn@"$machine".service.d/
+cat >/etc/systemd/system/systemd-nspawn@"$machine".service.d/override.conf <<NSPAWN
+Environment=SYSTEMD_NSPAWN_USE_CGNS=0
 NSPAWN
 
 machinectl start "$machine"
