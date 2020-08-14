@@ -17,7 +17,6 @@ hardware and network, which explains why some things seem very complicated.
    overview
    setup
    Services <services/index>
-   monitoring
    repo
    cookbook
    standalone-sites

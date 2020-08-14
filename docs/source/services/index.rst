@@ -7,3 +7,4 @@ Services
    contest
    web
    misc
+   monitoring
