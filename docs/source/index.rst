@@ -12,11 +12,11 @@ are surprisingly complex to meet with our low budgets and low control over the
 hardware and network, which explains why some things seem very complicated.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
    overview
    setup
-   misc_services
+   Services <services/index>
    monitoring
    repo
    cookbook
@@ -30,4 +30,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
