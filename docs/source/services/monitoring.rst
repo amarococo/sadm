@@ -37,6 +37,8 @@ The following endpoints are available for Prometheus to fetch metrics:
 - hfs: each hfs exports its metrics on ``http://hfsx:9030``
 - workernode: each workernode exports its metrics on ``http://MACHINE:9020``.
 
+**TODO**: add more information on how to use alerting.
+
 Grafana
 -------
 

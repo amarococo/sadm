@@ -77,3 +77,15 @@ Bug tracker
 
 **TODO**: We ditched Redmine and we are working on a good replacement based on
 Django. This section should be updated once it's ready.
+
+Map
+---
+
+A map of all the users is available at ``http://map``. It uses a SVG template
+which maps the usual machine room setup. It uses machine hostnames to map
+positions in the room with machines registered in MDB.
+
+The ``presencesync_usermap.service`` service watches for changes in UDB, MDB
+and Presencesync, and regenerates a map based on the map template after each
+change. It also regularly pings the machines to check for network issues and
+display them.

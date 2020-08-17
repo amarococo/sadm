@@ -1,7 +1,20 @@
 Infrastructure overview
 =======================
 
-This section describes what runs on our servers and what it is used for.
+This section gives a brief overview of our infrastructure.
+
+Documentation maintainers
+-------------------------
+
+- Alexandre Macabies (2013-2019)
+- Antoine Pietri (2013-2020)
+- Marin Hannache (2013, 2014)
+- Nicolas Hureau (2013)
+- Paul Hervot (2014, 2015)
+- Pierre Bourdon (2013, 2014)
+- Pierre-Marie de Rodat (2013)
+- Rémi Audebert (2014-2019)
+- Sylvain Laurent (2013)
 
 Needs
 -----
@@ -27,20 +40,18 @@ Needs
 Network infrastructure
 ----------------------
 
-We basically have two local networks:
+We basically have a single local network, containing every user machine
+(Pasteur + IP12A) and all servers, on the range 192.168.0.0/23. The gateway
+(named ``gw``) is 192.168.1.254.
 
-- User LAN, containing every user machine (Pasteur + IP12A) and all servers.
-- Matches LAN, containing the cluster master and all the cluster slaves.
+This local network is further divided in three subnetworks:
 
-The User LAN uses 192.168.0.0/24, and the gateway (named ``gw``) is
-192.168.1.254. 192.168.1.0/24 is reserved for servers, and 192.168.250.0/24
-is reserved for machines not in the MDB.
+- 192.168.0.0/24 is for users (staff and contestants)
+- 192.168.1.0/24 is reserved for servers
+- 192.168.250.0/24 is the alien network, reserved for machines not in the MDB
+  that are pending registration.
 
-The Matches LAN uses 192.168.2.0/24, and the gateway (named ``gw.cl``) is
-192.168.2.254.
-
-Both ``gw`` and ``gw.cl`` communicate through an OpenVPN point to point
-connection.
+.. _mdb_overview:
 
 Machine database
 ----------------
@@ -60,8 +71,8 @@ It stores the following information for each machine:
 - Alias hostnames (mostly for services that have several DNS names)
 - IP
 - MAC
-- Nearest root NFS server
-- Nearest home NFS server
+- Nearest root file server
+- Nearest home file server
 - Machine type (user, orga, cluster, service)
 - Room id (pasteur, alt, cluster, other)
 
@@ -70,6 +81,8 @@ It is the main data source for DHCP, DNS, monitoring and other stuff.
 When a machine boots, an IPXE script will lookup the machine info from the MDB
 (to get the hostname and the nearest NFS root). If it is not present, it will
 ask for information on stdin and register the machine in the MDB.
+
+.. _udb_overview:
 
 User database
 -------------
@@ -85,27 +98,24 @@ It stores the following information for every user:
 - Last name
 - Current machine name
 - Password (unencrypted so organizers can give it back to people who lose it)
-- At his computer right now (timestamp of last activity)
 - Type (contestant, organizer, root)
 - SSH key (mostly useful for roots)
 
 As with the MDB, the UDB is used as the main data source for several services:
 every service accepting logins from users synchronizes the user data from the
-UDB (contest website, bug tracker, ...). A ``pam_udb``
-service is also used to handle login on user machines.
+UDB (contest website, bug tracker, ...). A PAM service is also used to handle
+login on user machines.
 
 File storage
 ------------
 
-4 classes of file storage, all using NFS over TCP (to handle network congestion
+3 classes of file storage, all using NFS over TCP (to handle network congestion
 gracefully):
 
 - Root filesystem for the user machines: 99% reads, writes only done by roots.
 - Home directories filesystem: 50% reads, 50% writes, needs low latency
 - Shared directory for users junk: best effort, does not need to be fast, if
   people complain, tell them off.
-- Shared directory for champions/logs/maps/...: 35% reads, 65% writes, can't be
-  sharded, needs high bandwidth and low latency
 
 Root filesystem is manually replicated to several file servers after any change
 by a sysadmin. Each machine using the root filesystem will interogate the MDB
@@ -126,46 +136,6 @@ The user shared directory is just one shared NFS mountpoint for everyone. It
 does not have any hard performance requirement. If it really is too slow, it
 can be sharded as well (users will see two shared mount points and will have to
 choose which one to use). This file server is called ``shfs``.
-
-The shared directory for matches runners is not exposed publicly and only
-machines from the matches cluster can connect to it. It is a single NFS
-mounpoint local to the rack containing the matches cluster. The server is
-connected with 2Gbps to a switch, and each machine from the cluster is
-connecter do the same switch with a 1Gbps link. This file server is running on
-``fs.cl``, which is usually the same machine as ``gw.cl``.
-
-DHCP and DNS
-------------
-
-The DHCP server for the user network runs on ``gw``. It is responsible for
-handing out IPs to machines connecting to the network. The MAC<->IP mapping is
-generated from MDB every minute. Machines that are not in the MDB are given an
-IP from the 192.168.250.0/24 range.
-
-The DHCP server for the cluster network runs on ``gw.cl``. The MAC<->IP mapping
-is also generated from MDB, but this time the unknown range is 192.168.2.200
-to 192.168.2.250.
-
-The DNS server for the whole infrastructure runs on ``ns``, which is usually
-the same machine as ``gw``. The hostname<->IP mapping is generated from MDB
-every minute. There are also some static mappings for the unknown ranges:
-192.168.250.x is mapped to ``alien-x`` and 192.168.2.200-250 is mapped to
-``alien-x.cl``.
-
-Matches cluster
----------------
-
-The matches cluster contains several machines dedicated to running Stechec
-matches. It is a separate physical architecture, in a separate building, on a
-separate LAN. The two gateways, ``gw.cl`` and ``gw`` are connected through an
-OpenVPN tunnel.
-
-``master.cl`` runs the Stechec master node, which takes orders from the Stechec
-website (running on ``contest``, on the main LAN). All nodes in the cluster are
-connected to the master node.
-
-To share data, all the nodes are connected to a local NFS share: ``fs.cl``.
-Read the file storage overview for more information.
 
 Other small services
 --------------------

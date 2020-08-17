@@ -17,11 +17,12 @@ hardware and network, which explains why some things seem very complicated.
    overview
    setup
    Services <services/index>
-   repo
    cookbook
-   standalone-sites
-   containers
    omg
+   Past finals <pastfinals/index>
+   repo
+   containers
+   standalone-sites
 
 Indices and tables
 ==================

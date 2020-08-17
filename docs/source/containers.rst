@@ -1,3 +1,5 @@
+.. _container_setup:
+
 Container setup for SADM
 ========================
 
@@ -375,7 +377,7 @@ The interface is not running (``state DOWN``), we have to enable it::
   # ip link set dev prologin up
 
 Going further/discussion
-========================
+------------------------
 
 What could make your container usage better?
 

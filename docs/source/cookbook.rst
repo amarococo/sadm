@@ -4,30 +4,103 @@ Cookbook
 All the things you might need to do as an organizer or a root are documented
 here.
 
-Server setup
-------------
+Install a package for the contestants
+-------------------------------------
 
-Here is a list of things to remember when setting up servers:
+The recommended way to add a package for the contestants is to add it in the
+list of packages, so that it will be also installed in future editions.
+Simply edit ``ansible/roles/rfs_packages/tasks/main.yml`` and add the wanted
+packages where appropriate, then redeploy::
 
-- Use ssh as soon as possible.
-- Work in a tmux session, this allows any other root to take over your work if
-  needed.
-- Use only one user and one shell (bash) and setup an infinite history. This,
-  http://stackoverflow.com/a/19533853 is already installed by the rfs scripts.
-  Doing that will document what you and the other admins are doing during the
-  contest.
+    ansible-playbook playbook-rfs-container.yml
 
-Testing on qemu/libvirt
------------------------
+However, sometimes you might not want to add a package in a permanent fashion,
+and just want to install something in a quick and dirty way on all the RFS
+exports. In that case, use an Ansible ad-hoc command like this::
 
-Here are some notes:
+    ansible rfs_container -m shell -a "pacman -S mypackage"
 
-- Do not use the spice graphical console for setting up servers, use the serial
-  line. For syslinux it is ``serial 0`` at the top of ``syslinux.cfg`` and for
-  Linux ``console=ttyS0`` on the cmd line of the kernel in ``syslinux.cfg``.
-- For best performance use the VirtIO devices (disk, NIC), this should already
-  be configured if you used ``virt-install`` to create the machine.
-- For user machines, use the QXL driver for best performance with SPICE.
+
+.. _enable_contest_services:
+
+Switching in and out of contest mode
+------------------------------------
+
+Contest mode is the set of switches to block internet access to the users and
+give them access to the contest ressources.
+
+Switching to contest mode is completely automated in Ansible. Initially, the
+inventory should contain this default configuration, which disables contest
+mode::
+
+    contest_enabled: false
+    contest_started: false
+
+**Switching to contest mode** can be done in two steps:
+
+1. Edit your inventory and enable these two values::
+
+    contest_enabled: true
+    contest_started: true
+
+2. Run the following ansible command::
+
+    ansible-playbook playbook-all-sadm.yml --tags contest_mode
+
+**Once the contest is over**, you will want to go back to a configuration where
+everyone can access the internet, but you do not want to remove the game
+packages, because you will need them to run tournament matches. You can go to a
+configuration that is out of contest mode, but where the contest resources
+are no longer considered "secret" and are installed on the machines:
+
+1. Change your inventory values to this::
+
+    contest_enabled: false
+    contest_started: true
+
+2. Run the ansible command again::
+
+    ansible-playbook playbook-all-sadm.yml --tags contest_mode
+
+Customize the wallpaper
+~~~~~~~~~~~~~~~~~~~~~~~
+
+To customize the desktop wallpaper, edit your inventory to add a custom
+wallpaper URL like this::
+
+    wallpaper_override_url: "https://prologin.org/static/archives/2009/finale/xdm/prologin2k9_1280x1024.jpg"
+
+Then, run the following command::
+
+    ansible-playbook playbook-rfs-container.yml --tags wallpaper
+
+This will install the new wallpaper at ``/opt/prologin/wallpaper.png``.
+
+The following DE are setup to use this file:
+
+* i3
+* awesome
+* Plasma (aka. KDE)
+* XFCE
+
+Gnome-shell is still to be done.
+
+Customize the lightdm theme
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**TODO**
+
+Sending announcements
+---------------------
+
+To send pop-up announcements on all the user's machines, use an Ansible ad-hoc
+command like this::
+
+    ansible user -m shell -a "/usr/bin/xrun /usr/bin/zenity --info --text='Allez manger !' --icon-name face-cool"
+
+``xrun`` is a binary we install on all the user machines that knows how to
+find the currently running X server and sets all the required environment
+variables to run a GUI program on the remote machine.
 
 User related operations
 -----------------------
@@ -49,21 +122,6 @@ Giving back his password to a contestant
 
 Adding an organizer
     **Root only**. Go to ``udb`` and add a user with type ``orga``.
-
-Send an announce
-    Connect to the IRC server, join the #notify channel, and send a message
-    formatted like this::
-
-      !announce <expiration-delay> <message>
-
-    Example::
-
-      !announce 12 The lunch is ready!
-
-    Will create an announce which will stay for 12 minutes on the users's
-    desktops. Note that the delay will default to 2 when not specified::
-
-      !announce No milk today :(
 
 Machine registration
 --------------------
