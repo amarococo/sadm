@@ -11,7 +11,7 @@ present. Just follow the guide!
 Note: This section is for the actual hardware setup of the final. To setup a
 development environment in containers, see :ref:`container_setup`.
 
-Step 0: hardware and network setup
+Step 0: Hardware and network setup
 ----------------------------------
 
 Before installing servers, we need to make sure all the machines are connected
@@ -26,12 +26,13 @@ about:
 * Have a very limited trust on the hardware that is given to you, and if
   possible reset them to a factory default.
 
-For each pair of switches, you will need one RHFS server (connected to the 2
-switches via 2 separate NICs, and hosting the RFS + HFS for the machines on
-these 2 switches). Please be careful out the disk space: assume that each RHFS
-has about 100GB usable for HFS storage. That means at most 50 contestants (2GB
-quota) or 20 organizers (5GB quota) per RHFS. With contestants that should not
-be a problem, but try to balance organizers machines as much as possible.
+For each pair of switches, you will need one :ref:`RHFS <rhfs>` server
+(connected to the 2 switches via 2 separate NICs, and hosting the RFS + HFS for
+the machines on these 2 switches). Please be careful out the disk space: assume
+that each RHFS has about 100GB usable for HFS storage. That means at most 50
+contestants (2GB quota) or 20 organizers (5GB quota) per RHFS. With contestants
+that should not be a problem, but try to balance organizers machines as much as
+possible.
 
 You also need one gateway/router machine, which will have 3 different IP
 addresses for the 3 logical subnets used during the finals:
@@ -53,7 +54,7 @@ users and services subnet like this:
 :Users: 192.168.0.0 - 192.168.0.253
 :Services and organizers machines: 192.168.1.0 - 192.168.1.253
 
-Step 1: writing the Ansible inventory
+Step 1: Writing the Ansible inventory
 -------------------------------------
 
 The Ansible inventory is configuration that is specific to the current SADM
@@ -68,7 +69,7 @@ deployment. There are two inventories in the ``ansible`` directory:
 have to do it on a physical infra, which hasn't happened yet. Include secrets
 rotations, addition of MAC addresses, etc.
 
-Step 2: setting up the gateway
+Step 2: Setting up the gateway
 ------------------------------
 
 The very first step is to install an Arch Linux system for ``gw``.  We have
@@ -76,8 +77,8 @@ scripts to make this task fast and easy.
 
 .. _basic_fs_setup:
 
-Basic system: file system setup
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+File system setup
+~~~~~~~~~~~~~~~~~
 
 .. note::
     The installation process is partially automated with scripts. You are
@@ -90,9 +91,9 @@ doing a containerized install or if you already have a file system ready.
 For ``gw`` and other critical systems such as ``web``, we setup a `RAID1
 (mirroring) <https://en.wikipedia.org/wiki/Standard_RAID_levels#RAID_1>`__ over
 two discs. Because the RAID will be the size of the smallest disc, they have to
-be of the same capacity. We use regular 500GBytes SATA, which is usually more
-than enough. It is a good idea to choose two different disks (brand, age,
-batch) to reduce the chance to have them failing at the same time.
+be of the same capacity. We use regular 500 GB HDDs, which is usually more than
+enough. It is a good idea to choose two different disks (brand, age, batch) to
+reduce the chance to have them failing at the same time.
 
 On top of the RAID1, our standard setup uses `LVM
 <https://wiki.archlinux.org/index.php/LVM>`_ to create and manage the system
@@ -105,7 +106,7 @@ Arch Linux's install medium
 
 Once the bootstrap system is started, you can start the install using::
 
-  bash <(curl https://raw.githubusercontent.com/prologin/sadm/master/install_scripts/bootstrap_from_install_medium.sh)
+  bash <(curl -L https://sadm.prolo.in)
 
 This script checks out sadm, then does the RAID1 setup, installs Arch Linux and
 configures it for RAID1 boot. So far nothing is specific to sadm and you could
@@ -118,8 +119,8 @@ the machine::
 
 The machine should reboot and display the login tty. To test this step:
 
-- The system must boot
-- Systemd should start without any ``[FAILED]`` item.
+- The system must boot.
+- systemd should start without any ``[FAILED]`` logs.
 - Log into the machine as ``root`` with the password you configured.
 - Check that the hostname is ``gw.prolo`` by invoking ``hostnamectl``::
 
@@ -161,6 +162,10 @@ The machine should reboot and display the login tty. To test this step:
   else you can add a static IP using a ``systemd-network`` ``.network``
   configuration file.
 
+- Check there are no failed systemd services; if there are, troubleshoot them::
+
+    systemctl status
+
 SADM deployment
 ~~~~~~~~~~~~~~~
 
@@ -183,11 +188,11 @@ Gateway network configuration
 
 It also has IP to communicate with the outside world:
 
-- 10.?.?.?/8 static IP given by the bocal to communicate with the bocal gateway
-- 163.5.??.??/16 WAN IP given by the CRI
+- 10.a.b.c/8 static IP given by the bocal to communicate with the bocal gateway
+- 163.5.x.y/16 WAN IP given by the CRI
 
-The network interface(s) are configured using ``systemd-networkd``. Our
-configuration files are stored in ``etc/systemd/network/``.
+The network interface(s) are configured using ``systemd-networkd``, in files
+under ``/etc/systemd/network/``.
 
 For this step, we use the following systemd services:
 
@@ -202,16 +207,18 @@ For more information, see the `systemd-networkd documentation
 
 At this point you should reboot and test your network configuration:
 
-- Your network interfaces should be up (``ip link show`` shoud show ``state
-  UP`` for all interfaces but ``lo``).
-- The IP addresses (``ip address show``) are correctly set to their respective
+- Your network interfaces should be up (``ip link`` should show ``state UP``
+  for all interfaces but ``lo``).
+- The IP addresses (``ip addr``) are correctly set to their respective
   interfaces.
-- Default route (``ip route show``) should be the CRI's gateway.
+- Default route (``ip route``) should be the CRI's gateway.
 
 Then, you can also check that the :ref:`core_services` are individually running
 properly, as they will be required for the rest of the setup.
 
-Step 3: file storage
+.. _rhfs:
+
+Step 3: File storage
 --------------------
 
 .. sidebar:: rhfs naming scheme
@@ -230,11 +237,11 @@ A RHFS, for "root/home file server", has the following specifications:
   It also mean that a RHFS will be physically near the machines it handles,
   pretty useful for debugging, although you will mostly work using SSH.
 - Two NICs configured using DHCP, each of them connected to a different switch.
-- Two disks in RAID1 setup, same as gw.
+- Two disks in RAID1 setup, same as ``gw``.
 
 To bootstrap a rhfs, ``rhfs01`` for example, follow this procedure:
 
-#. Boot the machine using PXE and register it into ``mdb`` as ``rhfs01``.
+#. Boot the machine using PXE and register it into MDB as ``rhfs01``.
 #. Reboot the machine and boot an Arch Linux install medium.
 #. Follow the same first setup step as for ``gw``: see :ref:`basic_fs_setup`.
 
@@ -253,9 +260,9 @@ we can install it very simply::
 
     ansible-playbook playbook-rhfs.yml
 
-After setting up the RHFS systems, we also need to setup the inside of the RFS
-system, by deploying ansible in the container which mounts
-``/export/nfsroot``::
+After setting up the RHFS systems, we also need to setup the actual root FS
+that's mounted as ``/`` by the candidates' machines. Deploy ansible in the
+container which mounts ``/export/nfsroot``::
 
     ansible-playbook playbook-rfs-container.yml
 
@@ -290,12 +297,12 @@ establish a mapping like this::
   rhfs4 -> sw-kb-pas-6 (00:14:38:67:f7:e0)
   rhfs5 -> sw-kb-pas-7 (00:1b:3f:5b:8c:a0)
 
-You can register all those switches [in MDB](http://mdb/mdb/switch/). Click on
-"add switch", with the name of the switch like ``sw-kb-past-2``, the chassis ID
-like ``68:b5:99:9f:45:40``, and put the number of the interface in the RFS and
-HFS field (i.e if it's on the interface ``rhfs0``, put 0 in both fields).
+You can register all those switches `in MDB <http://mdb/mdb/switch/>`_. Click
+on "add switch", with the name of the switch like ``sw-kb-past-2``, the chassis
+ID like ``68:b5:99:9f:45:40``, and put the number of the interface in the RFS
+and HFS field (i.e. if it's on the interface ``rhfs0``, put 0 in both fields).
 
-Step 4: booting the user machines
+Step 4: Booting the user machines
 ---------------------------------
 
 All the components required to boot user machines should now properly be
@@ -305,23 +312,24 @@ installed. Execute this on all the machines:
 #. Choose "Register with LLDP"
 #. Follow the instructions to register the machine and reboot.
 
-Test procedure that everything is working well on the machine:
+Here is a test procedure to ensure everything is working well:
 
 #. Boot a user machine
 #. Login manager should appear
-#. Log using a test account (create one if needed), a hfs should be created
+#. Log-in using a test account (create one if needed), a home should be created
    with the skeleton in it.
 #. The desktop launches, the user can edit files and start programs
-#. Close the session
-#. Boot a user machine using an other hfs
-#. Log using the same test account, the hfs should be be migrated.
-#. The same desktop launches with modifications.
+#. Log-out ie. close the session
+#. Boot a user machine that's bound to another HFS
+#. Log-in using the same test account, the home should be
+   :ref:`migrated <home_migration>`.
+#. The same desktop launches, with state preserved from the previous session.
 
-Step 5: Install the service machines
-------------------------------------
+Step 5: Installing the service machines
+---------------------------------------
 
-We now need to setup all the service machines (monitoring, web, misc). For each
-of these servers:
+We now need to set up all the service machines (monitoring, web, misc). For
+each of these servers:
 
 #. Boot the machine using PXE and register it into ``mdb`` as a service with
    the correct hostname.
@@ -335,7 +343,6 @@ deployed::
     ansible-playbook playbook-web.yml
     ansible-playbook playbook-misc.yml
 
-
 Note: Testing on qemu/libvirt
 -----------------------------
 
@@ -344,6 +351,7 @@ Here are some notes:
 - Do not use the spice graphical console for setting up servers, use the serial
   line. For syslinux it is ``serial 0`` at the top of ``syslinux.cfg`` and for
   Linux ``console=ttyS0`` on the cmd line of the kernel in ``syslinux.cfg``.
-- For best performance use the VirtIO devices (disk, NIC), this should already
-  be configured if you used ``virt-install`` to create the machine.
-- For user machines, use the QXL driver for best performance with SPICE.
+- For best performance use the VirtIO devices (disk, NIC), this should
+  already be configured if you used ``virt-install`` to create the machine.
+- For user machines, use the QXL driver for best performance with SPICE, and
+  use VirtIO for video.
